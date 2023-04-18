@@ -3,12 +3,12 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using System.Collections.Generic;
 
 namespace md5
 {
     public partial class Form1 : Form
     {
-
         static readonly int[] s = new int[64] {
             7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
             5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,
@@ -34,20 +34,12 @@ namespace md5
             0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
         };
 
-        public static uint leftRotate(uint x, int c)
-        {
-            return (x << c) | (x >> (32 - c));
-        }
+        static Dictionary<string,string> credentials = new Dictionary<string,string>();
 
-        public Form1()
+        public string generateHash(string input)
         {
-            InitializeComponent();
-        }
+            byte[] message = Encoding.ASCII.GetBytes(input);
 
-        private void calculateHash_Click(object sender, EventArgs e)
-        {
-
-            byte[] message = Encoding.ASCII.GetBytes(sourceMessageTextBox.Text);
             uint a0 = 0x67452301;   // A
             uint b0 = 0xefcdab89;   // B
             uint c0 = 0x98badcfe;   // C
@@ -109,11 +101,43 @@ namespace md5
                 d0 += D;
             }
 
-            sourceMessageHashLabel.Text = GetByteString(a0) + GetByteString(b0) + GetByteString(c0) + GetByteString(d0);
+            return GetByteString(a0) + GetByteString(b0) + GetByteString(c0) + GetByteString(d0);
+        }
+
+        public static uint leftRotate(uint x, int c)
+        {
+            return (x << c) | (x >> (32 - c));
+        }
+
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        private void calculateHash_Click(object sender, EventArgs e)
+        {
+            sourceMessageHashLabel.Text = generateHash(sourceMessageTextBox.Text);
+            credentials.Add(sourceLoginTextBox.Text, sourceMessageHashLabel.Text);
         }
         private static string GetByteString(uint x)
         {
             return String.Join("", BitConverter.GetBytes(x).Select(y => y.ToString("x2")));
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            var enteredPass = generateHash(checkPassTextBox.Text);
+            if (!credentials.ContainsKey(checkLoginTextBox.Text))
+                MessageBox.Show("Пользователя с таким логином не зарегистрировано(");
+            if (credentials[checkLoginTextBox.Text] == enteredPass)
+                MessageBox.Show("Вы успешно вошли!");
+            else
+                MessageBox.Show("Пароль неверный!");
+        }
+
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }
