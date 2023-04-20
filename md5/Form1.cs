@@ -9,6 +9,8 @@ namespace md5
 {
     public partial class Form1 : Form
     {
+        static Dictionary<string, string> credentials = new Dictionary<string, string>();
+
         static readonly int[] s = new int[64] {
             7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
             5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,
@@ -34,7 +36,10 @@ namespace md5
             0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
         };
 
-        static Dictionary<string,string> credentials = new Dictionary<string,string>();
+        public static uint leftRotate(uint x, int c)
+        {
+            return (x << c) | (x >> (32 - c));
+        }
 
         public string generateHash(string input)
         {
@@ -45,22 +50,21 @@ namespace md5
             uint c0 = 0x98badcfe;   // C
             uint d0 = 0x10325476;   // D
 
-            var addLength = (56 - ((message.Length + 1) % 64)) % 64; // calculate the new length with padding
+            var addLength = (56 - ((message.Length + 1) % 64)) % 64; // считаем длину дополненной строки
             var processedInput = new byte[message.Length + 1 + addLength + 8];
             Array.Copy(message, processedInput, message.Length);
             processedInput[message.Length] = 0x80; // add 1
 
-            byte[] length = BitConverter.GetBytes(message.Length * 8); // bit converter returns little-endian
-            Array.Copy(length, 0, processedInput, processedInput.Length - 8, 4); // add length in bits
+            byte[] length = BitConverter.GetBytes(message.Length * 8);
+            Array.Copy(length, 0, processedInput, processedInput.Length - 8, 4); // дописываем длину исходного сообщения
 
             for (int i = 0; i < processedInput.Length / 64; ++i)
             {
-                // copy the input to M
+                // копируем message в массив M
                 uint[] M = new uint[16];
                 for (int j = 0; j < 16; ++j)
                     M[j] = BitConverter.ToUInt32(processedInput, (i * 64) + (j * 4));
 
-                // initialize round variables
                 uint A = a0, B = b0, C = c0, D = d0;
 
                 // primary loop
@@ -104,19 +108,21 @@ namespace md5
             return GetByteString(a0) + GetByteString(b0) + GetByteString(c0) + GetByteString(d0);
         }
 
-        public static uint leftRotate(uint x, int c)
-        {
-            return (x << c) | (x >> (32 - c));
-        }
-
         public Form1()
         {
             InitializeComponent();
+
+            credentials.Add("login", generateHash("password"));
         }
 
         private void calculateHash_Click(object sender, EventArgs e)
         {
             sourceMessageHashLabel.Text = generateHash(sourceMessageTextBox.Text);
+            if (credentials.ContainsKey(sourceLoginTextBox.Text))
+            {
+                MessageBox.Show(this, "Пользователь с таким логином уже зарегестрирован.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             credentials.Add(sourceLoginTextBox.Text, sourceMessageHashLabel.Text);
         }
         private static string GetByteString(uint x)
@@ -128,11 +134,17 @@ namespace md5
         {
             var enteredPass = generateHash(checkPassTextBox.Text);
             if (!credentials.ContainsKey(checkLoginTextBox.Text))
-                MessageBox.Show("Пользователя с таким логином не зарегистрировано(");
-            if (credentials[checkLoginTextBox.Text] == enteredPass)
-                MessageBox.Show("Вы успешно вошли!");
-            else
-                MessageBox.Show("Пароль неверный!");
+            {
+                MessageBox.Show(this, "Пользователь с таким логином не зарегистрирован.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (credentials[checkLoginTextBox.Text] != enteredPass)
+            {
+                MessageBox.Show(this, "Пароль неверный!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            MessageBox.Show(this, "Вы успешно вошли!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void textBox1_TextChanged(object sender, EventArgs e)
